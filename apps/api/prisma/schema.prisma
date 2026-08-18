@@ -1,0 +1,193 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum Role {
+  ORGANIZER
+  CLIENT
+  GATE
+}
+
+enum EventStatus {
+  DRAFT
+  PUBLISHED
+  CANCELLED
+}
+
+enum SaleMode {
+  SEAT_MAP
+  GA_QTY
+}
+
+enum ReservationStatus {
+  HOLD
+  EXPIRED
+  CONVERTED
+  CANCELLED
+}
+
+enum PaymentStatus {
+  PENDING
+  APPROVED
+  REJECTED
+}
+
+enum TicketStatus {
+  ISSUED
+  USED
+}
+
+enum GateScanResult {
+  VALID
+  INVALID
+  ALREADY_USED
+  WRONG_EVENT
+}
+
+model User {
+  id           String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  email        String   @unique
+  passwordHash String
+  name         String
+  role         Role
+  avatar       String?
+  createdAt    DateTime @default(now()) @db.Timestamptz
+  updatedAt    DateTime @updatedAt @db.Timestamptz
+
+  events       Event[]        @relation("OrganizerEvents")
+  reservations Reservation[]
+  payments     Payment[]
+  tickets      Ticket[]
+  gateScans    GateScan[]
+}
+
+model Event {
+  id           String      @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  organizerId  String      @db.Uuid
+  tmdbId       Int
+  externalRef  String
+  title        String
+  description  String?
+  posterUrl    String
+  venue        String
+  startsAt     DateTime    @db.Timestamptz
+  capacity     Int
+  priceCents   Int
+  saleMode     SaleMode    @default(SEAT_MAP)
+  status       EventStatus @default(DRAFT)
+  rows         Int         @default(8)
+  cols         Int         @default(10)
+  createdAt    DateTime    @default(now()) @db.Timestamptz
+  updatedAt    DateTime    @updatedAt @db.Timestamptz
+
+  organizer    User          @relation("OrganizerEvents", fields: [organizerId], references: [id])
+  seats        Seat[]
+  reservations Reservation[]
+  tickets      Ticket[]
+  gateScans    GateScan[]
+
+  @@index([organizerId])
+  @@index([tmdbId])
+  @@index([externalRef])
+  @@index([status, startsAt])
+}
+
+model Seat {
+  id      BigInt @id @default(autoincrement())
+  eventId String @db.Uuid
+  label   String
+  row     Int
+  col     Int
+
+  event        Event          @relation(fields: [eventId], references: [id], onDelete: Cascade)
+  reservations Reservation[]
+
+  @@unique([eventId, row, col])
+  @@unique([eventId, label])
+  @@index([eventId])
+}
+
+model Reservation {
+  id        String            @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  eventId   String            @db.Uuid
+  userId    String            @db.Uuid
+  seatId    BigInt?
+  quantity  Int?
+  status    ReservationStatus @default(HOLD)
+  expiresAt DateTime          @db.Timestamptz
+  createdAt DateTime          @default(now()) @db.Timestamptz
+  updatedAt DateTime          @updatedAt @db.Timestamptz
+
+  event   Event    @relation(fields: [eventId], references: [id])
+  user    User     @relation(fields: [userId], references: [id])
+  seat    Seat?    @relation(fields: [seatId], references: [id])
+  payment Payment?
+
+  // Active unique is SQL-only (partial): HOLD/CONVERTED + seatId NOT NULL
+  @@index([userId])
+  @@index([status, expiresAt])
+}
+
+model Payment {
+  id               String        @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  reservationId    String        @unique @db.Uuid
+  userId           String        @db.Uuid
+  status           PaymentStatus @default(PENDING)
+  simulatedOutcome String?
+  amountCents      Int
+  createdAt        DateTime      @default(now()) @db.Timestamptz
+  updatedAt        DateTime      @updatedAt @db.Timestamptz
+
+  reservation Reservation @relation(fields: [reservationId], references: [id])
+  user        User        @relation(fields: [userId], references: [id])
+  tickets     Ticket[]
+
+  @@index([userId])
+}
+
+model Ticket {
+  id          String       @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  eventId     String       @db.Uuid
+  userId      String       @db.Uuid
+  paymentId   String       @db.Uuid
+  code        String       @unique
+  codeHash    String
+  shareToken  String?      @unique
+  status      TicketStatus @default(ISSUED)
+  seatLabel   String?
+  usedAt      DateTime?    @db.Timestamptz
+  createdAt   DateTime     @default(now()) @db.Timestamptz
+  updatedAt   DateTime     @updatedAt @db.Timestamptz
+
+  event     Event      @relation(fields: [eventId], references: [id])
+  user      User       @relation(fields: [userId], references: [id])
+  payment   Payment    @relation(fields: [paymentId], references: [id])
+  gateScans GateScan[]
+
+  @@index([userId])
+  @@index([eventId, status])
+  @@index([paymentId])
+}
+
+model GateScan {
+  id        BigInt         @id @default(autoincrement())
+  ticketId  String?        @db.Uuid
+  eventId   String         @db.Uuid
+  scannedBy String         @db.Uuid
+  result    GateScanResult
+  rawCode   String
+  createdAt DateTime       @default(now()) @db.Timestamptz
+
+  ticket  Ticket? @relation(fields: [ticketId], references: [id])
+  event   Event   @relation(fields: [eventId], references: [id])
+  scanner User    @relation(fields: [scannedBy], references: [id])
+
+  @@index([eventId, createdAt])
+  @@index([ticketId])
+  @@index([scannedBy])
+}
