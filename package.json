@@ -2,6 +2,9 @@
   "name": "verzel-eventos-ingressos",
   "private": true,
   "packageManager": "pnpm@10.32.0",
+  "engines": {
+    "node": ">=20"
+  },
   "scripts": {
     "dev": "turbo run dev",
     "build": "turbo run build",

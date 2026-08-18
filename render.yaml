@@ -1,0 +1,53 @@
+# Blueprint free: um Web Service (API + SPA), Postgres e Key Value.
+# Postgres free expira em 30 dias; Redis free não persiste; o web dorme após 15 min.
+# Dashboard: New → Blueprint → este repositório (branch main).
+databases:
+  - name: cena-postgres
+    plan: free
+    postgresMajorVersion: '16'
+    databaseName: cena
+    user: cena
+    region: oregon
+    ipAllowList: []
+
+services:
+  - type: keyvalue
+    name: cena-redis
+    plan: free
+    region: oregon
+    ipAllowList: []
+    maxmemoryPolicy: noeviction
+
+  - type: web
+    name: cena
+    runtime: node
+    plan: free
+    region: oregon
+    branch: main
+    healthCheckPath: /api/health
+    buildCommand: corepack enable && pnpm install --frozen-lockfile && pnpm --filter @eventos/api exec prisma generate && pnpm --filter @eventos/web build && pnpm --filter @eventos/api build
+    preDeployCommand: pnpm --filter @eventos/api exec prisma migrate deploy
+    startCommand: pnpm --filter @eventos/api start:prod
+    initialDeployHook: pnpm --filter @eventos/api exec prisma db seed
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: NODE_VERSION
+        value: '20'
+      - key: DATABASE_URL
+        fromDatabase:
+          name: cena-postgres
+          property: connectionString
+      - key: REDIS_URL
+        fromService:
+          type: keyvalue
+          name: cena-redis
+          property: connectionString
+      - key: JWT_SECRET
+        generateValue: true
+      - key: TICKET_HMAC_SECRET
+        generateValue: true
+      - key: TMDB_API_KEY
+        sync: false
+      - key: TMDB_BASE_URL
+        value: https://api.themoviedb.org

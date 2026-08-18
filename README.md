@@ -78,6 +78,16 @@ Todas as senhas são `secret123` (`DEMO_PASSWORD` em `apps/api/prisma/seed.ts`).
 
 O seed cria/atualiza os 4 usuários (idempotente por e-mail) e um evento publicado: **"Showcase de Verão"** na **"Arena Demo"**, começa em +7 dias, 80 assentos (`SEAT_MAP`, fileiras A–H × colunas 1–10), preço R$ 100,00 (`priceCents: 10000`), associado ao filme TMDb `tmdb:155` (The Dark Knight / fixture). Se o evento já existir, o seed só atualiza os dados e não recria assentos.
 
+## Deploy (Render, plano free)
+
+O `render.yaml` sobe **um** Web Service (Nest serve `/api` e o build do Vite em `/`), Postgres 16 free e Redis (Key Value) free na mesma região.
+
+1. No [dashboard da Render](https://dashboard.render.com): **New → Blueprint** → repositório `hellyaxs/verzel-desafio-eventos-ingressos`, branch `main`.
+2. Preencha `TMDB_API_KEY` quando o Blueprint pedir (`sync: false`). Sem a chave, o catálogo usa fixtures.
+3. Aguarde o primeiro deploy (`prisma migrate deploy` + seed). Login demo: `org@eventos.local` / `secret123`.
+
+Limites do free: o web **dorme após 15 min**; Postgres **expira em 30 dias** (1 por workspace); Redis **não persiste** (filas BullMQ somem no restart).
+
 ## Testes
 
 ```bash
@@ -143,7 +153,7 @@ pnpm --filter @eventos/api prisma:seed
 ## Limitações conhecidas / fora do escopo do MVP
 
 - **Pagamento é simulado** (fila BullMQ `concurrency: 1`) — sem gateway real, PIX, cartão ou 3DS.
-- **Sem deploy publicado** — roda em localhost (deploy era opcional no desafio).
+- **Deploy na Render (plano free)** — um Web Service serve API + SPA no mesmo origin (cookie `httpOnly`). Postgres free expira em 30 dias; Redis free não persiste; o web dorme após 15 min (cold start). Blueprint: `render.yaml`. No dashboard: **New → Blueprint** neste repositório. `TMDB_API_KEY` é pedida no sync (`sync: false`). Seed: `org@eventos.local` / `secret123`.
 - **Catálogo dependente do TMDb** — sem a chave, usa fixtures de exemplo.
 - **Sem recuperação de senha nem e-mail transacional**.
 - **Cancelamento pós-pagamento não re-estoca** (hold é liberado no reject).
