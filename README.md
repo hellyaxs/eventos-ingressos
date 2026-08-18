@@ -84,7 +84,7 @@ O `render.yaml` sobe **um** Web Service (Nest serve `/api` e o build do Vite em 
 
 1. No [dashboard da Render](https://dashboard.render.com): **New → Blueprint** → repositório `hellyaxs/verzel-desafio-eventos-ingressos`, branch `main`.
 2. Preencha `TMDB_API_KEY` quando o Blueprint pedir (`sync: false`). Sem a chave, o catálogo usa fixtures.
-3. Aguarde o primeiro deploy (`prisma migrate deploy` + seed). Login demo: `org@eventos.local` / `secret123`.
+3. Aguarde o primeiro deploy. No plano free o `startCommand` aplica `prisma migrate deploy` e o seed. Login demo: `org@eventos.local` / `secret123`.
 
 Limites do free: o web **dorme após 15 min**; Postgres **expira em 30 dias** (1 por workspace); Redis **não persiste** (filas BullMQ somem no restart).
 

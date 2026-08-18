@@ -26,9 +26,8 @@ services:
     branch: main
     healthCheckPath: /api/health
     buildCommand: corepack enable && pnpm install --frozen-lockfile && pnpm --filter @eventos/api exec prisma generate && pnpm --filter @eventos/web build && pnpm --filter @eventos/api build
-    preDeployCommand: pnpm --filter @eventos/api exec prisma migrate deploy
-    startCommand: pnpm --filter @eventos/api start:prod
-    initialDeployHook: pnpm --filter @eventos/api exec prisma db seed
+    # Free não roda preDeploy; migrate+seed entram no start.
+    startCommand: pnpm --filter @eventos/api exec prisma migrate deploy && pnpm --filter @eventos/api exec prisma db seed && pnpm --filter @eventos/api start:prod
     envVars:
       - key: NODE_ENV
         value: production
