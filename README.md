@@ -46,24 +46,10 @@ pnpm --filter @eventos/api prisma:seed
 pnpm dev
 ```
 
-> Postgres e Redis sobem em **5433** e **6380** para não conflitar com instâncias locais comuns nas portas padrão. O `.env` é gitignored — comece copiando `.env.example`.
-
-## Portas e endpoints
+## Portas
 
 - Web: http://localhost:5173
 - API (prefixo global `/api`): http://localhost:3000
-  - `GET /api/health` — healthcheck
-  - `POST /api/auth/login` — login; JWT em cookie `httpOnly` (`access_token`). Resposta `{ token, user }` (token só para testes/API; o front usa o cookie).
-  - `POST /api/auth/logout` — limpa o cookie
-  - `GET /api/auth/me` — sessão atual (cookie ou Bearer)
-  - `GET /api/catalog/search?q=...` — busca no TMDb (`language=pt-BR`). Sem `TMDB_API_KEY`, filtra fixtures pelo título.
-  - `GET /api/events` e `POST /api/events` — listar/criar eventos (`tmdbId` + `posterUrl` obrigatórios no create → `externalRef: tmdb:{id}`)
-  - `GET /api/events/mine` e `PATCH /api/events/:id` — gerenciar eventos do organizador
-  - `POST /api/events/:id/reserve` — reservar assentos
-  - `POST /api/payments` — pagamento simulado: `{ "reservationIds": ["..."], "simulatedOutcome": "approve" | "reject" }` (também aceita `reservationId` único)
-  - `GET /api/tickets` — ingressos do cliente
-  - `GET /api/share/:shareToken` — página pública do ingresso
-  - `POST /api/gate/:eventId/validate` — validação na portaria (status `VALID` / `INVALID` / `ALREADY_USED` / `WRONG_EVENT`)
 
 ## Credenciais de demonstração (seed)
 
@@ -77,16 +63,6 @@ Todas as senhas são `secret123` (`DEMO_PASSWORD` em `apps/api/prisma/seed.ts`).
 | Portaria | `gate@eventos.local` |
 
 O seed cria/atualiza os 4 usuários (idempotente por e-mail) e um evento publicado: **"Showcase de Verão"** na **"Arena Demo"**, começa em +7 dias, 80 assentos (`SEAT_MAP`, fileiras A–H × colunas 1–10), preço R$ 100,00 (`priceCents: 10000`), associado ao filme TMDb `tmdb:155` (The Dark Knight / fixture). Se o evento já existir, o seed só atualiza os dados e não recria assentos.
-
-## Deploy (Render, plano free)
-
-O `render.yaml` sobe **um** Web Service (Nest serve `/api` e o build do Vite em `/`), Postgres 16 free e Redis (Key Value) free na mesma região.
-
-1. No [dashboard da Render](https://dashboard.render.com): **New → Blueprint** → repositório `hellyaxs/verzel-desafio-eventos-ingressos`, branch `main`.
-2. Preencha `TMDB_API_KEY` quando o Blueprint pedir (`sync: false`). Sem a chave, o catálogo usa fixtures.
-3. Aguarde o primeiro deploy. No plano free o `startCommand` aplica `prisma migrate deploy` e o seed. Login demo: `org@eventos.local` / `secret123`.
-
-Limites do free: o web **dorme após 15 min**; Postgres **expira em 30 dias** (1 por workspace); Redis **não persiste** (filas BullMQ somem no restart).
 
 ## Testes
 
